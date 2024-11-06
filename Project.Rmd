@@ -1,0 +1,246 @@
+---
+title: "Project - Most Popular Games in the time period of 1980/2023"
+author: "Marko Taleski"
+date: "2023-06-14"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+    number_sections: no
+    link-citations: yes
+    code_folding: hide
+bibliography: bibliography.bib
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = TRUE)
+library(ggplot2)
+library(DT)
+library(tidyverse)
+library(stringr)
+library(RColorBrewer)
+```
+
+# Introduction
+
+Video games have emerged as one of society's most beloved sources for entertainment over time. As a unique medium with interactive storytelling elements as well as skill tests for players that come across multiple forms and features. Gaining insight from computer-generated designs is crucial both for innovations during development phases and to adjust games in line with public demand. By examining different aspects including genre choice, factors leading up to creation or even how gamers respond after launch date - can help developers make key adjustments, direct academic research, social commentary, or guide players on choosing worthwhile purchases.
+
+# Presentation and description of the problem 
+
+Our study focuses on analyzing a video games dataset focused on the **Most Popular** Games between the years 1980 - 2023 and the analysis focuses on **Genre Analysis**, **Developer Analysis**, and **Player Engagement Analysis**. By doing so, we hope to reveal essential information about what drives a video games' longevity and success. Our primary objective is to equip gaming professionals and developers with insight into the underlying principles that discern prosperous titles from fleeting ones.
+
+We believe that analyzing a broad spectrum of popular video games across time provides us with valuable knowledge about crucial facets such as genre selection criteria, developer contributions towards these titles' success, as well as factors affecting player engagement. The intelligence obtained from these assessments should help developers make informed decisions regarding both production as well as promotions related strategies based on player preferences insights gained by analyzing such data sets. 
+Consequently, helping professionals understand trends reflected within gaming markets, enabling them to stay ahead decisively. In summary, our goal for this analysis is focused on resolving complex questions revolving video game popularity and successful game development.
+
+
+# Presentation of the Data
+
+## Importing the data and visualising it
+```{r}
+dataset <- read.csv("D:/Faks/Year 3/Data Programming/Project/games.csv")[-1253, ] 
+# Here I remove row 1253 because it is an entry for a game that hasn't been released yet and it also has the highest review even though it hasn't been released
+datatable(dataset, rownames = T, filter = "top", caption = "Games Data Set", options = list(searching = F, pageLength = 10, lengthMenu = c(5, 10, 15, 20), scrollX = T,  autoWidth = T, columnDefs = list(
+      list(targets = c(9, 10), visible = FALSE)
+    )))
+```
+In this data table I have just removed the columns Reviews and Summary because they are big chunks of text that extend the size of the table
+
+
+## Contents description 
+
+```{r}
+colnames(dataset)
+```
+### Meaning of column names
+1. **"X"**: Index of the row
+2. **"Title"**: Title of the game
+3. **"Release.Date"**: Date of release of the game's first version
+4. **"Team"**: Game developer team
+5. **"Rating"**: Average rating
+6. **"Times.Listed"**: Number of users who listed this game
+7. **"Number.of.Reviews"**: Number of reviews received from the users
+8. **"Genres"**: All genres pertaining to a specified game
+9. **"Summary"**: Summary provided by the team
+10. **"Reviews"**: User reviews
+11. **"Plays"**: Number of users that have played the game before
+12. **"Playing"**: Number of current users who are playing the game.
+13. **"Backlogs"**: Number of users who have access but haven't started with the game yet
+14. **"Wishlist"**: Number of users who wish to play the game
+
+## Overview of Data
+### Data-type info
+With the function str(dataset) we display the internal structure of the data set
+
+```{r}
+str(dataset)
+```
+### Summarization
+With the summary(dataset) function we do statistical analysis on our data.
+```{r}
+summary(dataset)
+```
+
+# Exploratory data analysis and Visualization
+
+## Genre Analysis
+
+The first analysis we are going to conduct is **Genre Analysis**, in this analysis we will focus on which games are most popular amongst gamers in order to understand which game genres are more likely to succeed and attract a larger audience. By examining the average ratings of different genres, we can understand the preferences and tastes of gamers. This information will be valuable for **Game developers** and **Publishers**, as it can help guide their decision-making process when it comes to game development.
+
+```{r}
+# Create a new dataset for genre analysis
+genre_dataset <- dataset
+
+# Converting Genres column to characters
+genre_dataset <- genre_dataset %>%
+  mutate(Genres = as.character(Genres))
+
+# Splitting the genre column into separate genres
+genre_dataset <- genre_dataset %>%
+  mutate(Genres = str_extract_all(Genres, "'(.*?)'")) %>%
+  unnest(Genres)
+
+# Calculating average rating per genre
+genre_ratings <- genre_dataset %>%
+  group_by(Genres) %>%
+  summarize(AverageRating = mean(Rating, na.rm = TRUE))  
+
+# Creating a column chart with genre names on the x-axis and ratings on the y-axis
+ggplot(data = genre_ratings, aes(x = reorder(Genres, AverageRating), y = AverageRating)) +
+  geom_col(fill = "steelblue", width = 0.7) +
+  labs(x = "Genre", y = "Average Rating", title = "Average Rating by Genre") +
+  scale_y_continuous(breaks = seq(0, ceiling(max(genre_ratings$AverageRating)), by = 0.5)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8))
+```
+
+As we can view from the graph the most popular Game Genres amongst gamers is **RPG**, **Turn Based Strategy** and **Visual Novel**, of which Visaul Novel is the only Genre with a rating above **4.0**
+
+
+
+## Developer Analysis
+
+This analysis is going to focus on the best **Developer Companies**, with this analysis we hope to uncover which video game developer companies are the most prominent in the video game industry. By calculating which video game companies are most likely to create a successful game and have their games be popular amongst gamers. This information will be valuable for **Investors**, as it can help guide their decision in which companies to invest.
+
+```{r}
+
+# Creating a new dataset for team analysis
+team_dataset <- dataset
+
+# Converting Team column to character type
+team_dataset <- team_dataset %>%
+  mutate(Team = as.character(Team))
+
+# Splitting the Team column into separate teams
+team_dataset <- team_dataset %>%
+  mutate(Team = str_extract_all(Team, "'(.*?)'")) %>%
+  unnest(Team)
+
+# Counting the number of games developed per team
+team_counts <- team_dataset %>%
+  group_by(Team) %>%
+  summarize(GamesDeveloped = n())
+
+# Selecting the top 5 teams with the most games developed
+top_teams <- team_counts %>%
+  top_n(5, wt = GamesDeveloped)  # Select top 5 teams based on games developed
+
+# Defining a bright color palette
+colors <- brewer.pal(length(top_teams$GamesDeveloped), "Set1")
+
+# Creating a pie chart to visualize the distribution of games developed among the top 5 teams
+ggplot(data = top_teams, aes(x = "", y = GamesDeveloped, fill = Team)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(fill = "Team", x = NULL, y = NULL, title = "Distribution of Games developed\namongs Game Development Companies") +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  geom_text(aes(label = paste(GamesDeveloped)), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = colors)
+
+
+```
+
+
+As we can view from the graph the most prominent Game Development Companies are **Capcom**, **Electronic Arts**, **Nintendo**, **Sega** and **Square Enix**, of which Nintendo is by far the most successful company as it has produced **245** of the games on this list.
+
+## Player Engagement Analysis
+
+This analysis focuses on **Player Engagement** with highly rated video games. The purpose of our analysis is to compare how many players have played a given game against how many individuals own that same title but haven't started playing yet. We will focus on the top 5 games based on their ratings. With this analysis, we hope to better understand player engagement and ownership patterns in the top-rated game. This analysis can benefit various stakeholders in the gaming industry, including game developers, publishers, and marketers. 
+
+
+```{r}
+# Creating a new dataset for analysis
+analysis_dataset <- dataset
+
+# Extracting necessary columns for the analysis
+analysis_data <- analysis_dataset %>%
+  select(Title, Plays, Playing, Backlogs, Rating) %>%
+  mutate(
+    Plays = parse_number(Plays) * ifelse(grepl("K$", Plays), 1000, 1),
+    Playing = parse_number(Playing) * ifelse(grepl("K$", Playing), 1000, 1),
+    Backlogs = parse_number(Backlogs) * ifelse(grepl("K$", Backlogs), 1000, 1)
+  ) %>%
+  arrange(desc(Rating)) %>%
+  head(5)  # Select top 5 games based on rating
+
+# Calculating the total number of players who have played the game
+analysis_data <- analysis_data %>%
+  mutate(TotalPlayers = Plays + Playing)
+
+# Calculating the total number of copies
+analysis_data <- analysis_data %>%
+  mutate(TotalCopies = TotalPlayers + Backlogs)
+
+# Calculating the percentage of non-players
+analysis_data <- analysis_data %>%
+  mutate(NonPlayersPercentage = ceiling((Backlogs / TotalCopies) * 100))
+
+# Creating a column chart to compare the number of players who have played the game and those who own it but haven't started
+column_chart <- ggplot(data = analysis_data) +
+  geom_col(aes(x = as.numeric(factor(Title)), y = TotalPlayers, fill = "Total Players"), width = 0.4, position = position_dodge(width = 0.8)) +
+  geom_col(aes(x = as.numeric(factor(Title)) + 0.4, y = Backlogs, fill = "Non-Players"), width = 0.4, position = position_dodge(width = 0.8)) +
+  geom_text(aes(x = as.numeric(factor(Title)) + 0.2, y = TotalPlayers, label = TotalPlayers), vjust = 1.2, hjust = 1.3) +
+  geom_text(aes(x = as.numeric(factor(Title)) + 0.6, y = Backlogs, label = Backlogs), vjust = 1.1, hjust = 1.3) +
+  scale_x_continuous(breaks = as.numeric(factor(analysis_data$Title)), labels = analysis_data$Title) +
+  labs(x = "Game", y = "Number of Players", title = "Comparison of Players Played vs Non-Players \n (Top 5 Games by Rating)") +
+  scale_fill_manual(values = c("Total Players" = "steelblue", "Non-Players" = "orange")) +
+  theme_bw() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  guides(fill = guide_legend(title = "Status")) +
+  theme(legend.position = "top", axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(column_chart)
+
+# Defining a bright color palette
+colors <- brewer.pal(length(analysis_data$NonPlayersPercentage), "Set1")
+
+
+# Creating a pie chart to visualize the distribution of non-player percentages
+pie_chart <- ggplot(data = analysis_data, aes(x = "", y = NonPlayersPercentage, fill = Title)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(x = NULL, y = NULL, title = "Percentage of Non-Players") +
+  theme_void() +
+  theme(legend.position = "right") +
+  geom_text(aes(label = paste((NonPlayersPercentage), "%")), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = colors) 
+
+# Displaying the pie chart of non-player percentages
+print(pie_chart)
+
+```
+
+From these graphs we can conclude that the player/non-players distribution is **Quite Different** in these games, even though the ratings for these games are quite similar. For instance the game **"Outer Wilds"** has **8361 players**, which the highest out of these 5 games, it also has **4800 non-players**, which means that **36% of all people who own "Outer Wilds" don't play it**. Similar results are show for **"Disco Elysium: The Final Cut"**, which has **40% non-play rate**. On the other hand less popular games like **"Bloodborn: The Old Hunters"** has a shocking **17% non-play rate**, which means most of the people who bought the game did infact play it and rated it highly.
+
+# Conclusion
+
+In our exploratory data analysis, we gained valuable information about the gaming industry. We identified popular game genres such as **RPG**, **Turn Based Strategy**, and **Visual Novel**. Successful game developers such as **Capcom**, **Electronic Arts**, **Nintendo**, **Sega**, and **Square Enix**. Additionally, we analyzed **Player engagement and Ownership patterns**, revealing variations in non-play rates among highly rated games.
+
+These findings offer valuable information for game developers, publishers, investors, and marketers. They can use these findings to make informed decisions about game development, investment opportunities, and marketing strategies. Overall, this analysis contributes to a better understanding of the gaming industry and its dynamics.
+
+# Bibliography 
+This study was influenced by an article that investigates engagement strategies in popular video games [@dickey2005engaging]
+
+## References
